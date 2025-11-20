@@ -50,7 +50,7 @@ jobs:
         run: echo "filename=$(ls *.vsix)" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.vsix-file.outputs.filename }}
           tag_name: ${{ github.ref_name }}
