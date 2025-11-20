@@ -11,6 +11,7 @@ interface RagResponse {
         lines: string;
         score: number;
     }>;
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     sources_count?: number;
     code?: number;
     message?: string;
@@ -213,7 +214,9 @@ export class RagChatViewProvider implements vscode.WebviewViewProvider {
                 path: parsedUrl.pathname + parsedUrl.search,
                 method: 'POST',
                 headers: {
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
                     'Content-Type': 'application/json',
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
                     'Content-Length': Buffer.byteLength(postData)
                 },
                 rejectUnauthorized: validateSSL
