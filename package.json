@@ -42,7 +42,7 @@
       "properties": {
         "ragChat.webhookUrl": {
           "type": "string",
-          "default": "https://dam-poc.kipitz.xyz/webhook-test/rag-chat",
+          "default": "https://localhost:5678/webhook-test/rag-chat",
           "description": "The webhook URL endpoint for RAG queries"
         },
         "ragChat.collection": {

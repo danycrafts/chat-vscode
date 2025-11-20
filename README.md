@@ -50,7 +50,7 @@ Configure the extension through VS Code settings:
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `ragChat.webhookUrl` | The webhook URL endpoint for RAG queries | `https://dam-poc.kipitz.xyz/webhook-test/rag-chat` |
+| `ragChat.webhookUrl` | The webhook URL endpoint for RAG queries | `https://localhost:5678/webhook-test/rag-chat` |
 | `ragChat.collection` | The collection name to query | `jenkins-git-repo` |
 | `ragChat.timeout` | Request timeout in milliseconds | `30000` |
 | `ragChat.validateSSL` | Validate SSL certificates for HTTPS requests | `true` |
