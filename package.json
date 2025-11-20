@@ -1,0 +1,84 @@
+{
+  "name": "rag-chat",
+  "displayName": "RAG Chat",
+  "description": "Chat interface for querying RAG-enabled code repositories",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "rag-chat.openChat",
+        "title": "Open RAG Chat",
+        "category": "RAG Chat"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "rag-chat-sidebar",
+          "title": "RAG Chat",
+          "icon": "$(comment-discussion)"
+        }
+      ]
+    },
+    "views": {
+      "rag-chat-sidebar": [
+        {
+          "type": "webview",
+          "id": "rag-chat.chatView",
+          "name": "Chat"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "RAG Chat",
+      "properties": {
+        "ragChat.webhookUrl": {
+          "type": "string",
+          "default": "https://dam-poc.kipitz.xyz/webhook-test/rag-chat",
+          "description": "The webhook URL endpoint for RAG queries"
+        },
+        "ragChat.collection": {
+          "type": "string",
+          "default": "jenkins-git-repo",
+          "description": "The collection name to query"
+        },
+        "ragChat.timeout": {
+          "type": "number",
+          "default": 30000,
+          "description": "Request timeout in milliseconds"
+        },
+        "ragChat.validateSSL": {
+          "type": "boolean",
+          "default": true,
+          "description": "Validate SSL certificates for HTTPS requests"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "18.x",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "https": "^1.0.0"
+  }
+}
