@@ -1,14 +1,28 @@
 # RAG Chat for VS Code
 
+[![CI](https://github.com/danycrafts/chat-vscode/workflows/CI/badge.svg)](https://github.com/danycrafts/chat-vscode/actions/workflows/ci.yml)
+[![Release](https://github.com/danycrafts/chat-vscode/workflows/Release/badge.svg)](https://github.com/danycrafts/chat-vscode/actions/workflows/release.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![VS Code](https://img.shields.io/badge/VS%20Code-1.85.0+-blue.svg)](https://code.visualstudio.com/)
+
 A Visual Studio Code extension that provides a chat interface for querying RAG (Retrieval-Augmented Generation) enabled code repositories.
 
 ## Features
 
 - **Chat Interface**: Interactive sidebar chat interface for asking questions about your code
-- **Source References**: Clickable source file references with line numbers
+- **Smart Context Sharing**: Automatically includes current file path and line number context in queries
+- **Enhanced Source References**:
+  - Clickable file:line references anywhere in chat messages (e.g., `src/file.ts:42`)
+  - Copy-to-clipboard functionality for easy reference sharing
+  - Improved visual design with hover effects
+- **Flexible Request Parameters**:
+  - Optional query and collection parameters
+  - Support for custom additional parameters
+  - Automatic context inclusion (file path, line numbers)
 - **Configurable Endpoint**: Easy configuration of webhook URL and collection name
 - **Syntax Highlighting**: Markdown formatted responses with code highlighting
 - **Context Retention**: Chat history is preserved while the view is open
+- **Security**: SSL certificate validation, configurable timeouts, and secure parameter handling
 
 ## Installation
 
@@ -51,9 +65,11 @@ Configure the extension through VS Code settings:
 | Setting | Description | Default |
 |---------|-------------|---------|
 | `ragChat.webhookUrl` | The webhook URL endpoint for RAG queries | `https://dam-poc.kipitz.xyz/webhook-test/rag-chat` |
-| `ragChat.collection` | The collection name to query | `jenkins-git-repo` |
+| `ragChat.collection` | The collection name to query (optional) | `jenkins-git-repo` |
 | `ragChat.timeout` | Request timeout in milliseconds | `30000` |
 | `ragChat.validateSSL` | Validate SSL certificates for HTTPS requests | `true` |
+| `ragChat.includeContext` | Include current file path and line number in queries | `true` |
+| `ragChat.additionalParams` | Additional parameters to include in every request (JSON object) | `{}` |
 
 ### Example settings.json
 
@@ -62,7 +78,12 @@ Configure the extension through VS Code settings:
   "ragChat.webhookUrl": "https://your-server.com/webhook/rag-chat",
   "ragChat.collection": "your-collection-name",
   "ragChat.timeout": 30000,
-  "ragChat.validateSSL": true
+  "ragChat.validateSSL": true,
+  "ragChat.includeContext": true,
+  "ragChat.additionalParams": {
+    "model": "gpt-4",
+    "temperature": 0.7
+  }
 }
 ```
 
@@ -87,9 +108,20 @@ Configure the extension through VS Code settings:
 When the response includes source references:
 
 1. Look for the "Sources" section below the answer
-2. Click on any source file reference
+2. Click on any source file reference to open the file
 3. The file will open automatically at the specified line range
 4. The relevant lines will be highlighted
+
+### Using File References
+
+The extension automatically detects file references in chat messages:
+
+- **Format**: `path/to/file.ext:line` or `path/to/file.ext:start-end`
+- **Examples**:
+  - `src/extension.ts:42` (single line)
+  - `src/chatViewProvider.ts:100-150` (line range)
+- **Click** any reference to jump to that location
+- **Copy** references from the Sources section with one click
 
 ### Example Queries
 
@@ -107,9 +139,22 @@ The extension sends POST requests with this structure:
 ```json
 {
   "query": "your question here",
-  "collection": "collection-name"
+  "collection": "collection-name",
+  "file_path": "src/extension.ts",
+  "line_number": 42,
+  "start_line": 40,
+  "end_line": 50
 }
 ```
+
+**Parameters:**
+- `query` (required): The user's question
+- `collection` (optional): The collection name from settings
+- `file_path` (optional): Current file path (when `includeContext` is enabled)
+- `line_number` (optional): Current cursor line (when no selection exists)
+- `start_line` (optional): Selection start line
+- `end_line` (optional): Selection end line
+- Additional custom parameters from `ragChat.additionalParams`
 
 ### Expected Response Format
 
@@ -146,12 +191,21 @@ The webhook should return JSON in this format:
 
 ```
 .
+├── .github/
+│   ├── workflows/
+│   │   ├── ci.yml            # CI pipeline
+│   │   └── release.yml       # Release pipeline
+│   └── dependabot.yml        # Dependabot configuration
 ├── src/
 │   ├── extension.ts          # Extension entry point
-│   └── chatViewProvider.ts   # Chat webview provider
+│   ├── chatViewProvider.ts   # Chat webview provider
+│   └── test/                 # Test suite
 ├── out/                       # Compiled JavaScript (generated)
 ├── package.json              # Extension manifest
 ├── tsconfig.json             # TypeScript configuration
+├── SECURITY.md               # Security policy
+├── CODE_OF_CONDUCT.md        # Code of conduct
+├── CONTRIBUTING.md           # Contribution guidelines
 └── README.md                 # This file
 ```
 
@@ -167,12 +221,36 @@ Watch mode for development:
 npm run watch
 ```
 
+Package as VSIX:
+```bash
+npm run package
+```
+
 ### Testing
 
 Run linting:
 ```bash
 npm run lint
 ```
+
+Run tests:
+```bash
+npm test
+```
+
+### CI/CD
+
+The project includes GitHub Actions workflows for:
+- **Continuous Integration**: Runs on every push and PR
+  - Linting
+  - Building
+  - Testing
+  - Security audit
+- **Release**: Triggered on version tags
+  - Builds VSIX package
+  - Creates GitHub release
+  - Uploads artifact to GitHub Packages
+  - Optionally publishes to VS Code Marketplace
 
 ## Troubleshooting
 
@@ -206,10 +284,19 @@ Make sure:
 2. The file paths in the response are relative to your workspace root
 3. The files exist in your workspace
 
-## License
+## Security
 
-MIT
+For security concerns and responsible disclosure, please see [SECURITY.md](SECURITY.md).
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Built with [VS Code Extension API](https://code.visualstudio.com/api)
+- Inspired by modern AI-powered development tools

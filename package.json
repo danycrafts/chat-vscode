@@ -2,11 +2,34 @@
   "name": "rag-chat",
   "displayName": "RAG Chat",
   "description": "Chat interface for querying RAG-enabled code repositories",
-  "version": "0.0.1",
+  "version": "0.1.0",
+  "publisher": "danycrafts",
+  "author": {
+    "name": "danycrafts"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danycrafts/chat-vscode.git"
+  },
+  "bugs": {
+    "url": "https://github.com/danycrafts/chat-vscode/issues"
+  },
+  "homepage": "https://github.com/danycrafts/chat-vscode#readme",
+  "keywords": [
+    "rag",
+    "chat",
+    "ai",
+    "code-assistant",
+    "retrieval-augmented-generation",
+    "code-search",
+    "documentation"
+  ],
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
+    "Machine Learning",
     "Other"
   ],
   "activationEvents": [],
@@ -59,6 +82,16 @@
           "type": "boolean",
           "default": true,
           "description": "Validate SSL certificates for HTTPS requests"
+        },
+        "ragChat.includeContext": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include current file path and line number in queries when available"
+        },
+        "ragChat.additionalParams": {
+          "type": "object",
+          "default": {},
+          "description": "Additional parameters to include in every request body (JSON object)"
         }
       }
     }
@@ -68,14 +101,22 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
-    "lint": "eslint src --ext ts"
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package",
+    "publish": "vsce publish"
   },
   "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.6",
     "@types/node": "18.x",
     "@types/vscode": "^1.85.0",
     "@typescript-eslint/eslint-plugin": "^6.13.0",
     "@typescript-eslint/parser": "^6.13.0",
+    "@vscode/test-electron": "^2.3.8",
     "eslint": "^8.54.0",
+    "glob": "^10.3.10",
+    "mocha": "^10.2.0",
     "typescript": "^5.3.0"
   },
   "dependencies": {

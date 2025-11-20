@@ -88,16 +88,46 @@ export class RagChatViewProvider implements vscode.WebviewViewProvider {
             const collection = config.get<string>('collection', '');
             const timeout = config.get<number>('timeout', 30000);
             const validateSSL = config.get<boolean>('validateSSL', true);
+            const includeContext = config.get<boolean>('includeContext', true);
+            const additionalParams = config.get<Record<string, any>>('additionalParams', {});
 
             if (!webhookUrl) {
                 throw new Error('Webhook URL is not configured. Please set ragChat.webhookUrl in settings.');
             }
 
-            if (!collection) {
-                throw new Error('Collection name is not configured. Please set ragChat.collection in settings.');
+            // Build request parameters
+            const requestParams: Record<string, any> = {
+                query: message,
+                ...additionalParams
+            };
+
+            // Add collection if configured
+            if (collection) {
+                requestParams.collection = collection;
             }
 
-            const response = await this.queryRag(webhookUrl, message, collection, timeout, validateSSL);
+            // Add current file context if enabled
+            if (includeContext) {
+                const editor = vscode.window.activeTextEditor;
+                if (editor) {
+                    const workspaceFolders = vscode.workspace.workspaceFolders;
+                    if (workspaceFolders && workspaceFolders.length > 0) {
+                        const relativePath = vscode.workspace.asRelativePath(editor.document.uri);
+                        requestParams.file_path = relativePath;
+
+                        // Include line number if there's a selection
+                        const selection = editor.selection;
+                        if (!selection.isEmpty) {
+                            requestParams.start_line = selection.start.line + 1;
+                            requestParams.end_line = selection.end.line + 1;
+                        } else {
+                            requestParams.line_number = selection.active.line + 1;
+                        }
+                    }
+                }
+            }
+
+            const response = await this.queryRag(webhookUrl, requestParams, timeout, validateSSL);
 
             // Handle error responses
             if (response.code && response.code !== 200) {
@@ -169,14 +199,13 @@ export class RagChatViewProvider implements vscode.WebviewViewProvider {
 
     private queryRag(
         webhookUrl: string,
-        query: string,
-        collection: string,
+        requestParams: Record<string, any>,
         timeout: number,
         validateSSL: boolean
     ): Promise<RagResponse> {
         return new Promise((resolve, reject) => {
             const parsedUrl = new URL(webhookUrl);
-            const postData = JSON.stringify({ query, collection });
+            const postData = JSON.stringify(requestParams);
 
             const options: https.RequestOptions = {
                 hostname: parsedUrl.hostname,
@@ -299,26 +328,71 @@ export class RagChatViewProvider implements vscode.WebviewViewProvider {
         }
 
         .source-item {
-            padding: 5px;
-            margin: 3px 0;
+            padding: 8px;
+            margin: 5px 0;
             background-color: var(--vscode-editor-background);
             border-left: 3px solid var(--vscode-button-background);
             cursor: pointer;
             font-size: 0.85em;
+            border-radius: 3px;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .source-item:hover {
             background-color: var(--vscode-list-hoverBackground);
+            border-left-width: 4px;
+        }
+
+        .source-info {
+            flex: 1;
         }
 
         .source-file {
             font-family: var(--vscode-editor-font-family);
             color: var(--vscode-textLink-foreground);
+            font-weight: 500;
+            margin-bottom: 2px;
         }
 
         .source-lines {
             font-size: 0.9em;
             color: var(--vscode-descriptionForeground);
+        }
+
+        .source-reference {
+            font-family: var(--vscode-editor-font-family);
+            font-size: 0.8em;
+            color: var(--vscode-descriptionForeground);
+            padding: 2px 6px;
+            background-color: var(--vscode-textCodeBlock-background);
+            border-radius: 3px;
+            margin-left: 8px;
+            cursor: copy;
+            user-select: all;
+        }
+
+        .source-reference:hover {
+            background-color: var(--vscode-input-background);
+        }
+
+        .file-reference {
+            display: inline-block;
+            font-family: var(--vscode-editor-font-family);
+            background-color: var(--vscode-textCodeBlock-background);
+            padding: 2px 6px;
+            border-radius: 3px;
+            cursor: pointer;
+            color: var(--vscode-textLink-foreground);
+            text-decoration: none;
+            margin: 2px 0;
+        }
+
+        .file-reference:hover {
+            background-color: var(--vscode-list-hoverBackground);
+            text-decoration: underline;
         }
 
         #input-container {
@@ -443,10 +517,16 @@ export class RagChatViewProvider implements vscode.WebviewViewProvider {
         const sendButton = document.getElementById('send-button');
         const loadingIndicator = document.getElementById('loading');
 
-        // Simple markdown-like formatting
+        // Simple markdown-like formatting with file reference support
         function formatMarkdown(text) {
             // Convert markdown to HTML (basic implementation)
             let html = text;
+
+            // File references with line numbers (e.g., src/file.ts:42 or src/file.ts:10-20)
+            html = html.replace(/([\\w\\/\\.-]+\\.[a-zA-Z]+):(\\d+)(?:-(\\d+))?/g, (match, file, startLine, endLine) => {
+                const lines = endLine ? \`\${startLine}-\${endLine}\` : startLine;
+                return \`<span class="file-reference" data-file="\${file}" data-lines="\${lines}">\${match}</span>\`;
+            });
 
             // Code blocks
             html = html.replace(/\`\`\`([\\s\\S]*?)\`\`\`/g, '<pre><code>$1</code></pre>');
@@ -459,7 +539,7 @@ export class RagChatViewProvider implements vscode.WebviewViewProvider {
 
             // Headers
             html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-            html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+            html = html.replace(/^## (.+)$/gm, '<h2>$2</h2>');
             html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
 
             return html;
@@ -487,6 +567,9 @@ export class RagChatViewProvider implements vscode.WebviewViewProvider {
                     const sourceItem = document.createElement('div');
                     sourceItem.className = 'source-item';
 
+                    const sourceInfo = document.createElement('div');
+                    sourceInfo.className = 'source-info';
+
                     const fileSpan = document.createElement('div');
                     fileSpan.className = 'source-file';
                     fileSpan.textContent = source.file;
@@ -495,8 +578,25 @@ export class RagChatViewProvider implements vscode.WebviewViewProvider {
                     linesSpan.className = 'source-lines';
                     linesSpan.textContent = \`Lines: \${source.lines} | Score: \${source.score.toFixed(3)}\`;
 
-                    sourceItem.appendChild(fileSpan);
-                    sourceItem.appendChild(linesSpan);
+                    sourceInfo.appendChild(fileSpan);
+                    sourceInfo.appendChild(linesSpan);
+
+                    const referenceSpan = document.createElement('span');
+                    referenceSpan.className = 'source-reference';
+                    referenceSpan.textContent = \`\${source.file}:\${source.lines}\`;
+                    referenceSpan.title = 'Click to copy reference';
+
+                    referenceSpan.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(\`\${source.file}:\${source.lines}\`);
+                        referenceSpan.textContent = 'Copied!';
+                        setTimeout(() => {
+                            referenceSpan.textContent = \`\${source.file}:\${source.lines}\`;
+                        }, 1000);
+                    });
+
+                    sourceItem.appendChild(sourceInfo);
+                    sourceItem.appendChild(referenceSpan);
 
                     sourceItem.addEventListener('click', () => {
                         vscode.postMessage({
@@ -556,6 +656,22 @@ export class RagChatViewProvider implements vscode.WebviewViewProvider {
                 case 'loadHistory':
                     message.messages.forEach(msg => addMessage(msg));
                     break;
+            }
+        });
+
+        // Handle clicks on file references in messages
+        document.addEventListener('click', (e) => {
+            const target = e.target;
+            if (target.classList.contains('file-reference')) {
+                const file = target.getAttribute('data-file');
+                const lines = target.getAttribute('data-lines');
+                if (file && lines) {
+                    vscode.postMessage({
+                        type: 'openFile',
+                        file: file,
+                        lines: lines
+                    });
+                }
             }
         });
 
